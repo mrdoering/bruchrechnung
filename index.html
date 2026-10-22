@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Brüche">
+<title>Bruch-Training</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Eine Spalte, eine Aufgabe pro Bildschirm, große Tippflächen; Karopapier als Grund */
+:root{
+  --paper:#f6f8fb; --grid:#dde6f0; --ink:#1d2733; --muted:#5e6b7a; --line:#c9d3df; --card:#fff;
+  --pen:#d2232a; --ok:#1f8a4c; --ok-bg:#e3f4ea; --bad-bg:#fbe8e8; --blue:#2457a6; --fill:#3b74d1; --empty:#eef2f7; --sun:#fff2c4;
+  --f-display:"Bricolage Grotesque", -apple-system, system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", -apple-system, system-ui, sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --paper:#12161c; --grid:#1c242e; --ink:#e8edf3; --muted:#9aa6b4; --line:#2e3846; --card:#1a2029;
+  --pen:#ff6b6b; --ok:#5fd394; --ok-bg:#15301f; --bad-bg:#3a1a1c; --blue:#8fb4f0; --fill:#5b8fe6; --empty:#252e3a; --sun:#3a3214; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background-color:var(--paper);color:var(--ink);font:17px/1.45 var(--f-body);-webkit-text-size-adjust:100%;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px}
+.app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;
+  padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+h1,h2{font-family:var(--f-display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:34px;font-weight:800} h2{font-size:22px}
+.muted{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;display:grid;gap:12px}
+.stack{display:grid;gap:14px}
+.btn{font:700 18px var(--f-body);border-radius:14px;padding:15px 18px;border:2px solid var(--ink);background:var(--card);color:var(--ink);cursor:pointer;width:100%;touch-action:manipulation}
+.btn.main{background:var(--ink);color:var(--paper)}
+.btn.red{background:var(--pen);border-color:var(--pen);color:#fff}
+.btn.ghost{border-color:var(--line);font-size:16px;padding:11px 14px}
+.btn:disabled{opacity:.4}
+button:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+textarea,input{font:inherit;color:var(--ink);background:var(--card);border:2px solid var(--line);border-radius:12px;padding:10px 12px;width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;font:700 15px var(--f-body);color:var(--muted);cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--blue);color:var(--blue);background:var(--empty)}
+.err{color:var(--pen);font-weight:700;font-size:15px}
+
+/* Aufgabe */
+.top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.top .x{border:0;background:none;font:700 15px var(--f-body);color:var(--muted);padding:6px 0;cursor:pointer}
+.prog{flex:1;height:10px;background:var(--empty);border-radius:99px;overflow:hidden;display:flex;gap:2px}
+.prog i{flex:1;background:var(--line)} .prog i.r1{background:var(--ok)} .prog i.r2{background:#e0a400} .prog i.r0{background:var(--pen)} .prog i.cur{background:var(--blue)}
+.count{font:700 14px var(--f-body);color:var(--muted);font-variant-numeric:tabular-nums}
+.topic{font:700 12px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--blue)}
+.q{font-size:23px;font-weight:700;line-height:1.5}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.05;margin:0 .12em;font-variant-numeric:tabular-nums}
+.fr span:first-child{border-bottom:2.5px solid currentColor;padding:0 .15em}
+.fr span{padding:0 .15em}
+.pic{width:100%;max-width:300px;height:auto;display:block;margin:4px auto}
+.pic:not(.bar){max-width:170px}
+.seg{fill:var(--empty);stroke:var(--ink);stroke-width:2}
+.seg.on{fill:var(--fill)}
+.paint .seg{cursor:pointer}
+.answer{display:flex;justify-content:center;padding:6px 0}
+.fin{display:inline-grid;gap:6px;justify-items:center}
+.fin input{width:96px;text-align:center;font:700 30px var(--f-body);padding:8px}
+.fin hr{width:118px;border:0;border-top:3px solid var(--ink);margin:0}
+.nin{width:130px;text-align:center;font:700 30px var(--f-body);padding:8px}
+.opts{display:grid;gap:10px;width:100%}
+.opt{text-align:left;font:700 18px var(--f-body);border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:14px 16px;cursor:pointer}
+.opt[aria-pressed="true"]{border-color:var(--blue);background:var(--empty)}
+.fb{border-radius:16px;padding:14px 16px;display:grid;gap:6px;font-size:17px}
+.fb.ok{background:var(--ok-bg);color:var(--ok)} .fb.bad{background:var(--bad-bg)} .fb.retry{background:var(--sun)}
+.fb b{font-size:19px}
+.fb .ex{color:var(--ink)}
+.spacer{flex:1;min-height:16px}
+.bottom{position:sticky;bottom:0;padding-top:10px;padding-bottom:max(4px,env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--paper) 30%)}
+
+/* Ende */
+.big{font-family:var(--f-display);font-weight:800;font-size:64px;line-height:1;font-variant-numeric:tabular-nums}
+.big small{font-size:28px;color:var(--muted)}
+.dots{display:flex;flex-wrap:wrap;gap:6px}
+.dot{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font:700 14px var(--f-body);color:#fff}
+.dot.r1{background:var(--ok)} .dot.r2{background:#d39a00} .dot.r0{background:var(--pen)}
+.code{font:12px ui-monospace,Menlo,monospace;word-break:break-all;background:var(--empty);padding:10px;border-radius:10px;user-select:all;-webkit-user-select:all}
+.grade{font-family:var(--f-display);font-weight:800;font-size:56px;color:var(--pen);line-height:1}
+</style>
+</head>
+<body>
+<main class="app" id="app">
+  <div class="stack" style="padding-top:8px">
+    <h1>Bruch-Training</h1>
+    <div class="card">
+      <h2>Diese Seite braucht Safari</h2>
+      <p style="margin:0">In der Vorschau der Dateien-App funktioniert das Training nicht. Bitte öffne den Link, den Papa dir geschickt hat, damit die Seite in Safari startet.</p>
+    </div>
+  </div>
+</main>
+<script>
+// ===== Bruch-Training: gemeinsamer Kern (identisch in Kinder- und Papa-Seite) =====
+const Core = (() => {
+  const rng = seed => { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; };
+  const gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a || 1; };
+  const R = (r, a, b) => a + Math.floor(r() * (b - a + 1));
+  const pick = (r, arr) => arr[Math.floor(r() * arr.length)];
+  const shuffle = (r, arr) => { arr = arr.slice(); for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  const coprime = (r, dMin, dMax) => { for (;;) { const d = R(r, dMin, dMax), n = R(r, 1, d - 1); if (gcd(n, d) === 1) return [n, d]; } };
+  const NAMES = ['Lena', 'Tom', 'Mia', 'Jonas', 'Emma', 'Paul', 'Ida', 'Max'];
+  const TOPICS = { begriff: 'Was ist ein Bruch?', kuerzen: 'Kürzen', erweitern: 'Erweitern' };
+
+  const mc = (r, q, right, wrongs, explain, fixed) => {
+    const opts = fixed ? ['Ja', 'Nein'] : shuffle(r, [right, ...wrongs]);
+    return { type: 'mc', q, opts, sol: opts.indexOf(right), solText: right, explain };
+  };
+
+  const GEN = {
+    begriff: [
+      r => { const d = R(r, 2, 10), n = R(r, 1, d - 1);
+        return { type: 'frac', check: 'value', q: 'Welcher Bruch ist hier dargestellt?', pic: { shape: pick(r, ['bar', 'pie']), d, n }, sol: [n, d],
+          explain: `Das Ganze ist in ${d} gleich große Teile geteilt, also ist der Nenner ${d}. Gefärbt sind ${n} Teile, also ist der Zähler ${n}.` }; },
+      r => { const d = R(r, 3, 10), n = R(r, 1, d - 1);
+        return { type: 'paint', q: `Färbe ${n}/${d} des Streifens ein.`, parts: d, sol: [n, d],
+          explain: `Der Streifen hat ${d} gleich große Teile (Nenner ${d}). Der Zähler ${n} sagt dir, wie viele davon du färbst.` }; },
+      r => { const d = R(r, 3, 12), n = R(r, 1, d - 1), z = r() < 0.5;
+        return { type: 'num', q: `Wie heißt der ${z ? 'Zähler' : 'Nenner'} von ${n}/${d}?`, sol: z ? n : d,
+          explain: `Der Zähler steht oben (${n}), der Nenner unten (${d}).` }; },
+      r => pick(r, [
+        r => mc(r, 'Was gibt der Nenner an?', 'In wie viele gleich große Teile das Ganze geteilt ist', ['Wie viele Teile man nimmt', 'Wie groß ein Teil in Zentimetern ist'],
+          'Der Nenner benennt die Teile: Er sagt, in wie viele gleich große Teile das Ganze zerlegt wurde.'),
+        r => mc(r, 'Was gibt der Zähler an?', 'Wie viele der Teile man nimmt', ['In wie viele Teile das Ganze geteilt ist', 'Wie viele Ganze es gibt'],
+          'Der Zähler zählt, wie viele der gleich großen Teile gemeint sind.'),
+        r => { const d = R(r, 3, 9); return mc(r, `Ist ${d}/${d} mehr, weniger oder genau ein Ganzes?`, 'Genau ein Ganzes', ['Mehr als ein Ganzes', 'Weniger als ein Ganzes'],
+          `Bei ${d}/${d} nimmt man alle ${d} Teile. Das ist genau ein Ganzes.`); },
+        r => { const d = R(r, 3, 8), n = R(r, d + 1, 2 * d - 1); return mc(r, `Ist ${n}/${d} mehr oder weniger als ein Ganzes?`, 'Mehr als ein Ganzes', ['Weniger als ein Ganzes', 'Genau ein Ganzes'],
+          `Ein Ganzes sind ${d}/${d}. ${n} Teile sind mehr als ${d} Teile.`); },
+        r => { const d = R(r, 3, 9), n = R(r, 1, d - 1); return mc(r, `Was ist größer: ${n}/${d} oder ${n + 1}/${d}?`, `${n + 1}/${d}`, [`${n}/${d}`, 'Beide sind gleich groß'],
+          `Beide haben den Nenner ${d}, die Teile sind also gleich groß. ${n + 1} Teile sind mehr als ${n} Teile.`); },
+      ])(r),
+      r => { const d = R(r, 4, 12), n = R(r, 1, d - 1), nm = pick(r, NAMES);
+        const q = pick(r, [
+          `Eine Pizza wird in ${d} gleich große Stücke geschnitten. ${nm} isst ${n} ${n > 1 ? 'Stücke' : 'Stück'}. Welchen Bruchteil der Pizza isst ${nm}?`,
+          `Eine Tafel Schokolade hat ${d} gleich große Stückchen. ${nm} hat schon ${n} davon gegessen. Welcher Bruchteil der Tafel ist weg?`,
+          `In einer Gruppe sind ${d} Kinder. ${n} davon spielen Fußball. Welcher Bruchteil der Gruppe spielt Fußball?`]);
+        return { type: 'frac', check: 'value', q, sol: [n, d], explain: `${n} von ${d} gleich großen Teilen, das ist ${n}/${d}.` }; },
+    ],
+    kuerzen: [
+      r => { const [n, d] = coprime(r, 2, 9), k = R(r, 2, 6), A = n * k, B = d * k;
+        return { type: 'frac', check: 'reduced', q: `Kürze ${A}/${B} vollständig.`, sol: [n, d],
+          explain: `Der größte gemeinsame Teiler von ${A} und ${B} ist ${k}. ${A} : ${k} = ${n} und ${B} : ${k} = ${d}.` }; },
+      r => { const [n, d] = coprime(r, 2, 7), k = R(r, 2, 5), m = R(r, 2, 3), A = n * k * m, B = d * k * m;
+        return { type: 'frac', check: 'exact', q: `Kürze ${A}/${B} mit ${k}.`, sol: [n * m, d * m],
+          explain: `Zähler und Nenner durch ${k} teilen: ${A} : ${k} = ${n * m} und ${B} : ${k} = ${d * m}.` }; },
+      r => { const [n, d] = coprime(r, 2, 9), k = R(r, 2, 6);
+        return { type: 'num', q: `Ergänze: ${n * k}/${d * k} = ${n}/?`, sol: d,
+          explain: `Der Zähler wurde durch ${k} geteilt (${n * k} : ${k} = ${n}). Dann muss auch der Nenner durch ${k}: ${d * k} : ${k} = ${d}.` }; },
+      r => { const can = r() < 0.5; let A, B, ex;
+        if (can) { const [n, d] = coprime(r, 2, 9), k = R(r, 2, 5); A = n * k; B = d * k; ex = `${A} und ${B} sind beide durch ${k} teilbar. Man kann also kürzen.`; }
+        else { [A, B] = coprime(r, 5, 15); ex = `${A} und ${B} haben außer 1 keinen gemeinsamen Teiler. Der Bruch ist schon vollständig gekürzt.`; }
+        return mc(r, `Kann man ${A}/${B} noch kürzen?`, can ? 'Ja' : 'Nein', [], ex, true); },
+    ],
+    erweitern: [
+      r => { const [n, d] = coprime(r, 2, 9), k = R(r, 2, 6);
+        return { type: 'frac', check: 'exact', q: `Erweitere ${n}/${d} mit ${k}.`, sol: [n * k, d * k],
+          explain: `Zähler und Nenner mal ${k}: ${n} · ${k} = ${n * k} und ${d} · ${k} = ${d * k}.` }; },
+      r => { const [n, d] = coprime(r, 2, 8), k = R(r, 2, 6), N = d * k;
+        return { type: 'frac', check: 'exact', q: `Erweitere ${n}/${d} auf den Nenner ${N}.`, sol: [n * k, N],
+          explain: `Von ${d} auf ${N} ist mal ${k}. Also auch den Zähler mal ${k}: ${n} · ${k} = ${n * k}.` }; },
+      r => { const [n, d] = coprime(r, 2, 9), k = R(r, 2, 6);
+        return { type: 'num', q: `Ergänze: ${n}/${d} = ?/${d * k}`, sol: n * k,
+          explain: `Der Nenner wurde mit ${k} malgenommen (${d} · ${k} = ${d * k}). Das Gleiche mit dem Zähler: ${n} · ${k} = ${n * k}.` }; },
+      r => { const [n, d] = coprime(r, 2, 8), k = R(r, 2, 5), same = r() < 0.5, Z = same ? n * k : n * k + pick(r, [-1, 1]);
+        return mc(r, `Sind ${n}/${d} und ${Z}/${d * k} gleich groß?`, same ? 'Ja' : 'Nein', [],
+          same ? `${n}/${d} mit ${k} erweitert ergibt ${n * k}/${d * k}. Die Brüche sind gleich groß.` : `${n}/${d} mit ${k} erweitert ergibt ${n * k}/${d * k}, nicht ${Z}/${d * k}.`, true); },
+    ],
+  };
+
+  // cfg: { s: seed, t: [themen], n: anzahl, v: versuche, g: note zeigen, ti: titel }
+  function makeSheet(cfg) {
+    const r = rng(cfg.s);
+    const topics = (cfg.t && cfg.t.length ? cfg.t : Object.keys(TOPICS)).filter(t => GEN[t]);
+    const order = shuffle(r, Array.from({ length: cfg.n }, (_, i) => topics[i % topics.length]));
+    const last = {};
+    return order.map((topic, i) => {
+      const list = GEN[topic];
+      let idx = Math.floor(r() * list.length);
+      if (idx === last[topic] && list.length > 1) idx = (idx + 1) % list.length;
+      last[topic] = idx;
+      return { id: i, topic, ...list[idx](r) };
+    });
+  }
+
+  const int = s => { s = String(s ?? '').trim(); return /^\d+$/.test(s) ? +s : null; };
+
+  // ans: frac {n,d} | num string | mc index | paint count
+  function check(t, ans) {
+    if (t.type === 'num') { const v = int(ans); return v === null ? { empty: true } : { ok: v === t.sol }; }
+    if (t.type === 'mc') return ans == null ? { empty: true } : { ok: ans === t.sol };
+    if (t.type === 'paint') return !ans ? { empty: true } : { ok: ans === t.sol[0], hint: ans !== t.sol[0] ? `Du hast ${ans} von ${t.parts} Teilen gefärbt.` : '' };
+    const n = int(ans && ans.n), d = int(ans && ans.d);
+    if (n === null || d === null) return { empty: true };
+    if (d === 0) return { ok: false, hint: 'Der Nenner darf nie 0 sein.' };
+    const [sn, sd] = t.sol, same = n * sd === sn * d;
+    if (t.check === 'value') return { ok: same };
+    if (t.check === 'reduced') {
+      if (same && gcd(n, d) !== 1) return { ok: false, hint: 'Der Wert stimmt, aber du kannst noch weiter kürzen.' };
+      return { ok: same };
+    }
+    if (n === sn && d === sd) return { ok: true };
+    if (same) return { ok: false, hint: 'Gleich groß, aber nicht mit der Zahl aus der Aufgabe gerechnet.' };
+    if (n === sn || d === sd) return { ok: false, hint: 'Denk dran: Zähler und Nenner beide mit derselben Zahl rechnen.' };
+    return { ok: false };
+  }
+
+  const ansText = (t, a) => {
+    if (a == null || a === '') return '—';
+    if (t.type === 'frac') return `${a.n ?? ''}/${a.d ?? ''}`;
+    if (t.type === 'mc') return t.opts[a] ?? '—';
+    if (t.type === 'paint') return `${a} von ${t.parts} Teilen`;
+    return String(a);
+  };
+  const solText = t => t.type === 'frac' ? `${t.sol[0]}/${t.sol[1]}` : t.type === 'mc' ? t.solText : t.type === 'paint' ? `${t.sol[0]} von ${t.parts} Teilen` : String(t.sol);
+
+  // ---- Codes ----
+  const b64e = str => { let s = ''; new TextEncoder().encode(str).forEach(b => s += String.fromCharCode(b)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const b64d = s => { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0))); };
+  const fnv = s => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+  const encode = (prefix, obj) => { const j = JSON.stringify(obj); return `${prefix}.${b64e(j)}.${fnv(j)}`; };
+  function decode(text, prefix) {
+    const m = String(text || '').replace(/\s+/g, '').match(new RegExp(prefix + '\\.([A-Za-z0-9_-]+)\\.([a-z0-9]+)'));
+    if (!m) return { err: `Kein ${prefix === 'BLATT' ? 'Blatt' : 'Ergebnis'}-Code gefunden. Er beginnt mit „${prefix}.“` };
+    let j; try { j = b64d(m[1]); } catch { return { err: 'Der Code ist beschädigt. Bitte noch einmal ganz kopieren.' }; }
+    if (fnv(j) !== m[2]) return { err: 'Der Code ist unvollständig. Bitte noch einmal ganz kopieren.' };
+    try { return { data: JSON.parse(j), key: m[2] }; } catch { return { err: 'Der Code ist beschädigt.' }; }
+  }
+
+  // ---- Punkte & Note ----
+  const SCALE = [92, 81, 67, 50, 30];
+  const points = r => r === 1 ? 1 : r > 1 ? 0.5 : 0;
+  function grade(pct, scale = SCALE) { for (let i = 0; i < 5; i++) if (pct >= scale[i]) return i + 1; return 6; }
+
+  // ---- Darstellung ----
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fr = s => esc(s).replace(/(\d+|\?)\/(\d+|\?)/g, '<span class="fr" aria-label="$1 von $2"><span>$1</span><span>$2</span></span>');
+  function pic(p, painted, clickable) {
+    const { shape, d } = p, filled = i => painted ? painted[i] : i < p.n;
+    if (shape === 'pie') {
+      const cx = 60, cy = 60, rad = 54; let s = '';
+      for (let i = 0; i < d; i++) {
+        const a0 = -Math.PI / 2 + i * 2 * Math.PI / d, a1 = a0 + 2 * Math.PI / d;
+        const x0 = cx + rad * Math.cos(a0), y0 = cy + rad * Math.sin(a0), x1 = cx + rad * Math.cos(a1), y1 = cy + rad * Math.sin(a1);
+        s += `<path class="seg${filled(i) ? ' on' : ''}" d="M${cx},${cy} L${x0.toFixed(2)},${y0.toFixed(2)} A${rad},${rad} 0 ${d === 1 ? 1 : 0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z"/>`;
+      }
+      return `<svg class="pic" viewBox="0 0 120 120" role="img" aria-label="Kreis in ${d} Teilen">${s}</svg>`;
+    }
+    const W = 300, H = 64, w = (W - 4) / d; let s = '';
+    for (let i = 0; i < d; i++) s += `<rect class="seg${filled(i) ? ' on' : ''}" ${clickable ? `data-seg="${i}" tabindex="0" role="button" aria-pressed="${!!filled(i)}" aria-label="Teil ${i + 1}"` : ''} x="${(2 + i * w).toFixed(2)}" y="2" width="${w.toFixed(2)}" height="${H - 4}" rx="3"/>`;
+    return `<svg class="pic bar" viewBox="0 0 ${W} ${H}" role="img" aria-label="Streifen in ${d} Teilen">${s}</svg>`;
+  }
+
+  return { TOPICS, makeSheet, check, ansText, solText, encode, decode, points, grade, SCALE, esc, fr, pic, fnv };
+})();
+
+</script>
+<script>
+const LS = 'bruch-kind-v1';
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const { esc, fr } = Core;
+
+let S = null;        // laufendes Blatt
+let ui = {};         // Zustand der aktuellen Aufgabe
+let screen = 'start';
+let startErr = '';
+let freeTopics = Object.keys(Core.TOPICS);
+
+function save() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch {} }
+function load() { try { const v = JSON.parse(localStorage.getItem(LS)); if (v && v.cfg) return v; } catch {} return null; }
+
+function begin(cfg) {
+  S = { cfg, res: [], i: 0, start: Date.now(), sec: 0 };
+  S.tasks = Core.makeSheet(cfg);
+  resetUi(); screen = 'task'; save(); render();
+}
+function resume(saved) {
+  S = saved; S.tasks = Core.makeSheet(S.cfg); S.start = Date.now() - S.sec * 1000;
+  if (S.res[S.i]) S.i++;
+  resetUi(); screen = S.i >= S.tasks.length ? 'done' : 'task'; render();
+}
+function resetUi() {
+  const t = S && S.tasks[S.i];
+  ui = { tries: 0, state: 'idle', hint: '', ans: null, paint: t && t.type === 'paint' ? Array(t.parts).fill(false) : null };
+}
+
+// ---------- Start ----------
+function renderStart() {
+  const saved = load();
+  const open = saved && saved.res.length < saved.cfg.n;
+  app.innerHTML = `
+    <div class="stack" style="padding-top:8px">
+      <div><h1>Bruch-Training</h1><p class="muted" style="margin:4px 0 0">Kürzen, Erweitern und was ein Bruch eigentlich ist.</p></div>
+      ${open ? `<div class="card"><h2>Weitermachen?</h2><p class="muted" style="margin:0">${esc(saved.cfg.ti)} · Aufgabe ${saved.res.length + 1} von ${saved.cfg.n}</p><button class="btn main" id="resume">Weitermachen</button></div>` : ''}
+      ${saved && !open ? `<div class="card"><h2>${esc(saved.cfg.ti)}</h2><p class="muted" style="margin:0">Fertig. Hast du Papa das Ergebnis geschickt?</p><button class="btn" id="showdone">Ergebnis ansehen</button></div>` : ''}
+      <div class="card">
+        <h2>Blatt von Papa</h2>
+        <label for="code" class="muted" style="font-size:15px">Code aus Papas Nachricht hier einfügen</label>
+        <textarea id="code" rows="3" placeholder="BLATT.…" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+        ${startErr ? `<div class="err">${esc(startErr)}</div>` : ''}
+        <button class="btn main" id="go">Los geht's</button>
+      </div>
+      <div class="card">
+        <h2>Einfach so üben</h2>
+        <div class="chips">${Object.entries(Core.TOPICS).map(([k, v]) => `<button class="chip" data-topic="${k}" aria-pressed="${freeTopics.includes(k)}">${esc(v)}</button>`).join('')}</div>
+        <button class="btn" id="free">10 Aufgaben üben</button>
+      </div>
+    </div>`;
+  $('#go').onclick = () => {
+    const r = Core.decode($('#code').value, 'BLATT');
+    if (r.err) { startErr = r.err; renderStart(); return; }
+    startErr = ''; begin(r.data);
+  };
+  $('#resume') && ($('#resume').onclick = () => resume(saved));
+  $('#showdone') && ($('#showdone').onclick = () => resume(saved));
+  $('#free').onclick = () => { if (!freeTopics.length) return; begin({ s: (Math.random() * 2 ** 31) | 0, t: freeTopics, n: 10, v: 2, g: 0, ti: 'Freies Üben' }); };
+  app.querySelectorAll('[data-topic]').forEach(b => b.onclick = () => {
+    const k = b.dataset.topic; freeTopics = freeTopics.includes(k) ? freeTopics.filter(x => x !== k) : [...freeTopics, k];
+    b.setAttribute('aria-pressed', freeTopics.includes(k)); $('#free').disabled = !freeTopics.length;
+  });
+}
+
+// ---------- Aufgabe ----------
+function answerHtml(t, locked) {
+  const dis = locked ? 'disabled' : '';
+  if (t.type === 'frac') {
+    const a = ui.ans || {};
+    return `<div class="fin"><input id="an" inputmode="numeric" pattern="[0-9]*" aria-label="Zähler" value="${esc(a.n || '')}" ${dis}><hr><input id="ad" inputmode="numeric" pattern="[0-9]*" aria-label="Nenner" value="${esc(a.d || '')}" ${dis}></div>`;
+  }
+  if (t.type === 'num') return `<input class="nin" id="anum" inputmode="numeric" pattern="[0-9]*" aria-label="Antwort" value="${esc(ui.ans ?? '')}" ${dis}>`;
+  if (t.type === 'mc') return `<div class="opts">${t.opts.map((o, i) => `<button class="opt" data-opt="${i}" aria-pressed="${ui.ans === i}" ${dis}>${fr(o)}</button>`).join('')}</div>`;
+  if (t.type === 'paint') return `<div class="paint" style="width:100%">${Core.pic({ shape: 'bar', d: t.parts }, ui.paint, !locked)}</div>`;
+  return '';
+}
+
+function renderTask() {
+  const t = S.tasks[S.i], n = S.tasks.length, max = S.cfg.v || 2;
+  const locked = ui.state === 'right' || ui.state === 'shown';
+  const prog = S.tasks.map((_, k) => `<i class="${k < S.i ? 'r' + Math.min(S.res[k][1], 2) : k === S.i ? 'cur' : ''}"></i>`).join('');
+  let fb = '';
+  if (ui.state === 'right') fb = `<div class="fb ok" role="status"><b>${ui.tries === 1 ? 'Richtig!' : 'Richtig, im zweiten Anlauf!'}</b></div>`;
+  if (ui.state === 'retry') fb = `<div class="fb retry" role="status"><b>Noch nicht ganz.</b>${ui.hint ? `<span class="ex">${esc(ui.hint)}</span>` : ''}<span class="ex">Versuch es noch einmal${max - ui.tries > 1 ? ` (${max - ui.tries} Versuche übrig)` : ''}.</span></div>`;
+  if (ui.state === 'shown') fb = `<div class="fb bad" role="status"><b style="color:var(--pen)">Richtig wäre: ${fr(Core.solText(t))}</b><span class="ex">${fr(t.explain)}</span></div>`;
+  app.innerHTML = `
+    <div class="top"><button class="x" id="quit" aria-label="Zum Start">✕</button><div class="prog" aria-hidden="true">${prog}</div><span class="count">${S.i + 1}/${n}</span></div>
+    <div class="stack">
+      <span class="topic">${esc(Core.TOPICS[t.topic])}</span>
+      <div class="q">${fr(t.q)}</div>
+      ${t.pic ? Core.pic(t.pic) : ''}
+      <div class="answer">${answerHtml(t, locked)}</div>
+      ${fb}
+    </div>
+    <div class="spacer"></div>
+    <div class="bottom">${locked ? `<button class="btn main" id="next">${S.i + 1 < n ? 'Weiter' : 'Fertig'}</button>` : `<button class="btn red" id="check">Prüfen</button>`}</div>`;
+
+  $('#quit').onclick = () => { screen = 'start'; render(); };
+  const read = () => {
+    if (t.type === 'frac') ui.ans = { n: $('#an').value.trim(), d: $('#ad').value.trim() };
+    if (t.type === 'num') ui.ans = $('#anum').value.trim();
+  };
+  app.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('input', read);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (inp.id === 'an') $('#ad').focus(); else doCheck(); } });
+  });
+  app.querySelectorAll('[data-opt]').forEach(b => b.onclick = () => { ui.ans = +b.dataset.opt; app.querySelectorAll('[data-opt]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+  app.querySelectorAll('[data-seg]').forEach(seg => {
+    const toggle = () => { const i = +seg.dataset.seg; ui.paint[i] = !ui.paint[i]; seg.classList.toggle('on', ui.paint[i]); seg.setAttribute('aria-pressed', ui.paint[i]); ui.ans = ui.paint.filter(Boolean).length; };
+    seg.addEventListener('click', toggle);
+    seg.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); } });
+  });
+  $('#check') && ($('#check').onclick = doCheck);
+  $('#next') && ($('#next').onclick = next);
+  if (!locked && ui.state === 'idle') { const f = $('#an') || $('#anum'); f && setTimeout(() => f.focus(), 50); }
+}
+
+function doCheck() {
+  const t = S.tasks[S.i], max = S.cfg.v || 2;
+  const c = Core.check(t, ui.ans);
+  if (c.empty) { const f = $('#an') && !$('#an').value ? $('#an') : $('#ad') || $('#anum'); f && f.focus(); return; }
+  ui.tries++;
+  if (c.ok) { ui.state = 'right'; S.res[S.i] = [Core.ansText(t, ui.ans), ui.tries]; }
+  else if (ui.tries >= max) { ui.state = 'shown'; S.res[S.i] = [Core.ansText(t, ui.ans), 0]; }
+  else { ui.state = 'retry'; ui.hint = c.hint || ''; }
+  S.sec = Math.round((Date.now() - S.start) / 1000);
+  renderTask();
+  save();
+}
+function next() { S.i++; save(); if (S.i >= S.tasks.length) { screen = 'done'; } else resetUi(); render(); window.scrollTo(0, 0); }
+
+// ---------- Ende ----------
+function renderDone() {
+  const n = S.tasks.length, res = S.res;
+  const first = res.filter(x => x[1] === 1).length, pts = res.reduce((s, x) => s + Core.points(x[1]), 0);
+  const code = Core.encode('ERGEBNIS', { c: S.cfg, r: res.map(x => [x[0], x[1]]), sec: S.sec, at: S.at || (S.at = Date.now()) });
+  save();
+  const msg = `${S.cfg.ti}: ${first} von ${n} auf Anhieb richtig.\n${code}`;
+  const words = first === n ? 'Alles auf Anhieb. Stark!' : first >= n * 0.7 ? 'Richtig gut!' : first >= n * 0.4 ? 'Gute Übung. Weiter so!' : 'Das war schwer. Übung hilft!';
+  app.innerHTML = `
+    <div class="stack" style="padding-top:8px">
+      <h1>${esc(words)}</h1>
+      <div class="card">
+        <div class="big">${first}<small> / ${n}</small></div>
+        <span class="muted">auf Anhieb richtig · ${Math.floor(S.sec / 60)} Min ${S.sec % 60} s</span>
+        <div class="dots">${res.map((x, i) => `<span class="dot r${x[1] > 2 ? 2 : x[1]}" title="Aufgabe ${i + 1}">${x[1] === 1 ? '✓' : x[1] > 1 ? '½' : '✗'}</span>`).join('')}</div>
+        ${S.cfg.g ? `<div><span class="muted">Note</span><div class="grade">${Core.grade(pts / n * 100)}</div></div>` : ''}
+      </div>
+      <div class="card">
+        <h2>Ergebnis an Papa</h2>
+        <button class="btn red" id="share">Ergebnis schicken</button>
+        <span class="muted" id="sharemsg" style="font-size:15px">Wähle danach Nachrichten und Papa aus. Klappt das nicht: Code kopieren und selbst schicken.</span>
+        <div class="code" id="codebox">${esc(code)}</div>
+        <button class="btn ghost" id="copy">Code kopieren</button>
+      </div>
+      <button class="btn ghost" id="home">Zum Start</button>
+    </div>`;
+  $('#share').onclick = async () => {
+    if (navigator.share) { try { await navigator.share({ text: msg }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    copy(msg);
+  };
+  $('#copy').onclick = () => copy(msg);
+  $('#home').onclick = () => { screen = 'start'; render(); };
+}
+async function copy(text) {
+  const m = $('#sharemsg');
+  try { await navigator.clipboard.writeText(text); m.textContent = 'Kopiert. Jetzt in die Nachricht an Papa einfügen.'; }
+  catch { const r = document.createRange(); r.selectNodeContents($('#codebox')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); m.textContent = 'Code ist markiert. Tippe auf „Kopieren“.'; }
+}
+
+function render() { if (screen === 'task') renderTask(); else if (screen === 'done') renderDone(); else renderStart(); }
+
+// Blatt aus Link (#BLATT…) übernehmen
+(function init() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h.startsWith('BLATT.')) {
+    const r = Core.decode(h, 'BLATT'), saved = load();
+    history.replaceState(null, '', location.pathname);
+    if (r.data) { if (saved && saved.cfg.s === r.data.s) return resume(saved); return begin(r.data); }
+    startErr = r.err;
+  }
+  render();
+})();
+</script>
+</body>
+</html>
