@@ -55,6 +55,10 @@ textarea,input{font:inherit;color:var(--ink);background:var(--card);border:2px s
 .fr span{padding:0 .15em}
 .pic{width:100%;max-width:300px;height:auto;display:block;margin:4px auto}
 .pic:not(.bar){max-width:170px}
+.pic.grid{max-width:260px} .pic.line{max-width:360px}
+svg [tabindex]:focus{outline:none} svg .seg:focus-visible{stroke:var(--blue);stroke-width:4}
+.mix{display:flex;align-items:center;gap:10px}
+.win{width:80px;text-align:center;font:700 30px var(--f-body);padding:8px}
 .seg{fill:var(--empty);stroke:var(--ink);stroke-width:2}
 .seg.on{fill:var(--fill)}
 .paint .seg{cursor:pointer}
@@ -103,12 +107,37 @@ const Core = (() => {
   const shuffle = (r, arr) => { arr = arr.slice(); for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
   const coprime = (r, dMin, dMax) => { for (;;) { const d = R(r, dMin, dMax), n = R(r, 1, d - 1); if (gcd(n, d) === 1) return [n, d]; } };
   const NAMES = ['Lena', 'Tom', 'Mia', 'Jonas', 'Emma', 'Paul', 'Ida', 'Max'];
-  const TOPICS = { begriff: 'Was ist ein Bruch?', kuerzen: 'Kürzen', erweitern: 'Erweitern' };
+  const TOPICS = { begriff: 'Was ist ein Bruch?', kuerzen: 'Kürzen', erweitern: 'Erweitern',
+    darstellen: 'Brüche zeichnen & ablesen', anteil: 'Anteile', groessen: 'Bruchteile von Größen', groessenbruch: 'Größen als Bruch',
+    vergleichen: 'Brüche vergleichen', gemischt: 'Gemischte Zahlen', zahlenstrahl: 'Zahlenstrahl', primquadrat: 'Primzahlen & Quadratzahlen' };
+  const KA = ['darstellen', 'anteil', 'groessen', 'groessenbruch', 'vergleichen', 'gemischt', 'zahlenstrahl', 'primquadrat'];
+  const lcm = (a, b) => a / gcd(a, b) * b;
+  const DIV = n => { const a = []; for (let i = 2; i < n; i++) if (n % i === 0) a.push(i); return a; };
+  const isPrime = n => { if (n < 2) return false; for (let i = 2; i * i <= n; i++) if (n % i === 0) return false; return true; };
+  const isSquare = n => Number.isInteger(Math.sqrt(n));
+  const spf = n => { for (let i = 2; i * i <= n; i++) if (n % i === 0) return i; return n; };
+  const factors = n => { const f = []; for (let p = 2; n > 1; p++) while (n % p === 0) { f.push(p); n /= p; } return f; };
+  const PRIMES = Array.from({ length: 99 }, (_, i) => i + 1).filter(isPrime);
+  const TRICKY = [1, 9, 15, 21, 27, 33, 39, 49, 51, 57, 63, 69, 77, 81, 87, 91, 93, 99];
+  const cop = (r, d, lo, hi) => { for (;;) { const n = R(r, lo, hi); if (gcd(n, d) === 1) return n; } };
+  const cmp = (a, b, c, d) => a * d === c * b ? '=' : a * d > c * b ? '>' : '<';
+  const CMP = ['<', '>', '='];
+  const UNITS = [
+    { b: 'h', bd: 'h', bn: 'Stunde', bp: 'Stunden', s: 'min', sn: 'Minuten', f: 60, gen: 'einer Stunde', ds: [2, 3, 4, 5, 6, 10, 12] },
+    { b: 'min', bd: 'min', bn: 'Minute', bp: 'Minuten', s: 's', sn: 'Sekunden', f: 60, gen: 'einer Minute', ds: [2, 3, 4, 5, 6, 10] },
+    { b: 'Tag', bn: 'Tag', bp: 'Tage', bd: 'Tagen', s: 'h', sn: 'Stunden', f: 24, gen: 'eines Tages', ds: [2, 3, 4, 6, 8, 12] },
+    { b: 'kg', bd: 'kg', bn: 'kg', bp: 'kg', s: 'g', sn: 'Gramm', f: 1000, gen: 'eines Kilogramms', ds: [2, 4, 5, 8, 10, 20] },
+    { b: 'm', bd: 'm', bn: 'm', bp: 'm', s: 'cm', sn: 'Zentimeter', f: 100, gen: 'eines Meters', ds: [2, 4, 5, 10, 20, 25] },
+    { b: 'km', bd: 'km', bn: 'km', bp: 'km', s: 'm', sn: 'Meter', f: 1000, gen: 'eines Kilometers', ds: [2, 4, 5, 8, 10] },
+    { b: '€', bd: '€', bn: '€', bp: '€', s: 'ct', sn: 'Cent', f: 100, gen: 'eines Euros', ds: [2, 4, 5, 10, 20] },
+    { b: 'l', bd: 'l', bn: 'l', bp: 'l', s: 'ml', sn: 'Milliliter', f: 1000, gen: 'eines Liters', ds: [2, 4, 5, 8, 10] },
+  ];
 
   const mc = (r, q, right, wrongs, explain, fixed) => {
     const opts = fixed ? ['Ja', 'Nein'] : shuffle(r, [right, ...wrongs]);
     return { type: 'mc', q, opts, sol: opts.indexOf(right), solText: right, explain };
   };
+  const mcF = (q, opts, right, explain) => ({ type: 'mc', q, opts, sol: opts.indexOf(right), solText: right, explain });
 
   const GEN = {
     begriff: [
@@ -169,6 +198,129 @@ const Core = (() => {
         return mc(r, `Sind ${n}/${d} und ${Z}/${d * k} gleich groß?`, same ? 'Ja' : 'Nein', [],
           same ? `${n}/${d} mit ${k} erweitert ergibt ${n * k}/${d * k}. Die Brüche sind gleich groß.` : `${n}/${d} mit ${k} erweitert ergibt ${n * k}/${d * k}, nicht ${Z}/${d * k}.`, true); },
     ],
+    // ===== Ab hier: Themen für die Klassenarbeit (neu) =====
+    darstellen: [
+      r => { const [rows, cols] = pick(r, [[2, 3], [2, 4], [3, 4], [2, 5], [3, 3], [4, 4], [3, 5]]), d = rows * cols, n = R(r, 1, d - 1), g = gcd(n, d);
+        return { type: 'frac', check: 'value', q: 'Welcher Bruchteil des Rechtecks ist gefärbt?', pic: { shape: 'grid', rows, cols, n }, sol: [n, d],
+          explain: `Das Rechteck hat ${rows} · ${cols} = ${d} gleich große Kästchen. ${n} davon sind gefärbt, also ${n}/${d}.${g > 1 ? ` Gekürzt ist das ${n / g}/${d / g}.` : ''}` }; },
+      r => { const [rows, cols] = pick(r, [[2, 3], [2, 4], [3, 4], [2, 5], [4, 4], [2, 6]]), parts = rows * cols, d = pick(r, DIV(parts)), n = cop(r, d, 1, d - 1), per = parts / d;
+        return { type: 'paint', shape: 'grid', rows, cols, parts, q: `Färbe ${n}/${d} des Rechtecks.`, sol: [n, d],
+          explain: `Das Rechteck hat ${parts} Kästchen. ${parts} : ${d} = ${per}, also ist 1/${d} gleich ${per} Kästchen. Für ${n}/${d} färbst du ${n} · ${per} = ${n * per} Kästchen.` }; },
+      r => { const parts = pick(r, [4, 6, 8, 12]), d = pick(r, [...DIV(parts), parts]), n = cop(r, d, 1, d - 1), per = parts / d;
+        return { type: 'paint', shape: 'pie', parts, q: `Färbe ${n}/${d} des Kreises.`, sol: [n, d],
+          explain: per === 1 ? `Der Kreis hat ${d} gleich große Teile. Färbe ${n} davon.` : `Der Kreis hat ${parts} Teile. 1/${d} sind ${per} Teile, also färbst du für ${n}/${d} genau ${n} · ${per} = ${n * per} Teile.` }; },
+    ],
+    anteil: [
+      r => { const [n, d] = coprime(r, 2, 6), k = R(r, 2, 6), T = d * k, P = n * k, nm = pick(r, NAMES);
+        const q = pick(r, [
+          `In einer Klasse sind ${T} Kinder. ${P} davon sind Mädchen. Welcher Anteil der Klasse sind Mädchen?`,
+          `${nm} hat ${T} Murmeln. ${P} davon sind blau. Welcher Anteil der Murmeln ist blau?`,
+          `In einer Kiste liegen ${T} Äpfel. ${P} davon sind rot. Welcher Anteil der Äpfel ist rot?`]);
+        return { type: 'frac', check: 'reduced', q: q + ' Gib den Bruch vollständig gekürzt an.', sol: [n, d],
+          explain: `${P} von ${T} ist ${P}/${T}. Mit ${k} gekürzt: ${n}/${d}.` }; },
+      r => { const [n, d] = coprime(r, 2, 8), k = R(r, 2, 9), A = d * k;
+        return { type: 'num', q: `Berechne ${n}/${d} von ${A}.`, sol: n * k,
+          explain: `Erst durch den Nenner teilen: ${A} : ${d} = ${k}. Dann mal den Zähler: ${k} · ${n} = ${n * k}.` }; },
+      r => { const [n, d] = coprime(r, 2, 8), k = R(r, 2, 8), A = d * k, nm = pick(r, NAMES);
+        const q = pick(r, [
+          `${nm} hat ${A} € gespart und gibt ${n}/${d} davon für ein Buch aus. Wie viel Euro kostet das Buch?`,
+          `${A} Kinder fahren ins Schullandheim. ${n}/${d} davon sind Jungen. Wie viele Jungen fahren mit?`,
+          `Eine Strecke ist ${A} km lang. ${nm} ist schon ${n}/${d} davon gefahren. Wie viele km sind das?`]);
+        return { type: 'num', q, sol: n * k, explain: `${n}/${d} von ${A}: ${A} : ${d} = ${k}, dann ${k} · ${n} = ${n * k}.` }; },
+      r => { const [n, d] = coprime(r, 2, 8), k = R(r, 2, 9);
+        return { type: 'num', q: `${n}/${d} einer Zahl sind ${n * k}. Wie heißt die Zahl?`, sol: d * k,
+          explain: `${n}/${d} sind ${n * k}. Dann ist 1/${d} gleich ${n * k} : ${n} = ${k}. Das Ganze sind ${d}/${d}: ${k} · ${d} = ${d * k}.` }; },
+    ],
+    groessen: [
+      r => { const u = pick(r, UNITS), d = pick(r, u.ds), n = cop(r, d, 1, d - 1), x = u.f / d * n;
+        return { type: 'num', q: `Wie viele ${u.sn} sind ${n}/${d} ${u.bn}?`, sol: x,
+          explain: `1 ${u.b} = ${u.f} ${u.s}. ${u.f} : ${d} = ${u.f / d}, mal ${n} ergibt ${x} ${u.s}.` }; },
+      r => { const u = pick(r, UNITS), d = pick(r, u.ds.filter(x => x <= 6)), n = cop(r, d, d + 1, 2 * d - 1), x = u.f / d * n;
+        return { type: 'num', q: `Wie viele ${u.sn} sind ${n}/${d} ${u.bp}?`, sol: x,
+          explain: `1 ${u.b} = ${u.f} ${u.s}, also ist 1/${d} ${u.b} = ${u.f / d} ${u.s}. Mal ${n} ergibt ${x} ${u.s}.` }; },
+      r => { const [n, d] = coprime(r, 2, 8), k = R(r, 2, 12), A = d * k, un = pick(r, ['kg', 'm', 'km', '€', 'l', 'min']);
+        return { type: 'num', q: `Berechne ${n}/${d} von ${A} ${un}. Gib das Ergebnis in ${un} an.`, sol: n * k,
+          explain: `${A} ${un} : ${d} = ${k} ${un}. Mal ${n}: ${n * k} ${un}.` }; },
+    ],
+    groessenbruch: [
+      r => { const u = pick(r, UNITS), d = pick(r, u.ds), n = R(r, 1, d - 1), x = u.f / d * n, g = gcd(x, u.f);
+        return { type: 'frac', check: 'reduced', q: `Welcher Bruchteil ${u.gen} sind ${x} ${u.sn}? Gib den Bruch vollständig gekürzt an.`, sol: [x / g, u.f / g],
+          explain: `1 ${u.b} = ${u.f} ${u.s}. ${x} von ${u.f} ist ${x}/${u.f}. Gekürzt mit ${g}: ${x / g}/${u.f / g}.` }; },
+      r => { const u = pick(r, UNITS), d = pick(r, u.ds), n = R(r, 1, d - 1), x = u.f / d * n, g = gcd(x, u.f);
+        return { type: 'frac', check: 'reduced', q: `Schreibe ${x} ${u.s} als Bruch in ${u.bd}. Kürze vollständig.`, sol: [x / g, u.f / g],
+          explain: `1 ${u.b} = ${u.f} ${u.s}, also sind ${x} ${u.s} = ${x}/${u.f} ${u.b}. Gekürzt: ${x / g}/${u.f / g} ${u.b}.` }; },
+      r => { const u = pick(r, UNITS), d = pick(r, u.ds), n = cop(r, d, 1, d - 1), x = u.f / d * n;
+        const wrong = [...new Set([`${n}${d} ${u.s}`, `${n * 10} ${u.s}`, `${Math.round(u.f / n)} ${u.s}`, `${x + u.f / d} ${u.s}`, `${n + d} ${u.s}`])].filter(w => w !== `${x} ${u.s}`);
+        return mc(r, `Was ist gleich ${n}/${d} ${u.bn}?`, `${x} ${u.s}`, shuffle(r, wrong).slice(0, 3),
+          `1 ${u.b} = ${u.f} ${u.s}. ${u.f} : ${d} · ${n} = ${x} ${u.s}.`); },
+    ],
+    vergleichen: [
+      r => { const d = R(r, 3, 12); let a = R(r, 1, 2 * d - 1), c = R(r, 1, 2 * d - 1); if (a === c) c = a + 1; const s = cmp(a, d, c, d);
+        return mcF(`Setze das richtige Zeichen ein: ${a}/${d} ☐ ${c}/${d}`, CMP, s,
+          `Gleicher Nenner: Die Teile sind gleich groß. Dann gewinnt der größere Zähler. ${a}/${d} ${s} ${c}/${d}.`); },
+      r => { const n = R(r, 1, 5); let b = R(r, n + 1, 12), d = R(r, n + 1, 12); if (b === d) d = b + 1; const s = cmp(n, b, n, d);
+        return mcF(`Setze das richtige Zeichen ein: ${n}/${b} ☐ ${n}/${d}`, CMP, s,
+          `Gleicher Zähler: Man nimmt gleich viele Teile. Je größer der Nenner, desto kleiner die Teile. Also ${n}/${b} ${s} ${n}/${d}.`); },
+      r => { const [a, b] = coprime(r, 2, 9); let c, d;
+        if (r() < 0.3) { const k = R(r, 2, 4); c = a * k; d = b * k; }
+        else { d = pick(r, [2, 3, 4, 5, 6, 8, 9, 10, 12].filter(x => x !== b)); c = R(r, 1, d - 1); if (c * b === a * d) c = c === 1 ? 2 : c - 1; }
+        const L = lcm(b, d), s = cmp(a, b, c, d), flip = r() < 0.5, [A, B, C, Dd] = flip ? [c, d, a, b] : [a, b, c, d], s2 = cmp(A, B, C, Dd);
+        return mcF(`Setze das richtige Zeichen ein: ${A}/${B} ☐ ${C}/${Dd}`, CMP, s2,
+          `Bring beide auf den Nenner ${L}: ${A}/${B} = ${A * L / B}/${L} und ${C}/${Dd} = ${C * L / Dd}/${L}. Also ${A}/${B} ${s2} ${C}/${Dd}.`); },
+      r => { const big = r() < 0.6, fs = [];
+        while (fs.length < 3) { const d = pick(r, [2, 3, 4, 5, 6, 8, 10, 12]), n = R(r, 1, d - 1); if (gcd(n, d) === 1 && !fs.some(([a, b]) => a * d === n * b)) fs.push([n, d]); }
+        const L = fs.reduce((l, [, d]) => lcm(l, d), 1), val = ([n, d]) => n * L / d;
+        const best = fs.reduce((x, y) => (big ? val(y) > val(x) : val(y) < val(x)) ? y : x), txt = ([n, d]) => `${n}/${d}`;
+        return mc(r, `Welcher Bruch ist am ${big ? 'größten' : 'kleinsten'}?`, txt(best), fs.filter(f => f !== best).map(txt),
+          `Alle auf den Nenner ${L} gebracht: ${fs.map(f => `${txt(f)} = ${val(f)}/${L}`).join(', ')}. Am ${big ? 'größten' : 'kleinsten'} ist ${txt(best)}.`); },
+    ],
+    gemischt: [
+      r => { const w = R(r, 1, 5), [n, d] = coprime(r, 2, 9);
+        return { type: 'frac', check: 'value', q: `Schreibe ${w} ${n}/${d} als Bruch.`, sol: [w * d + n, d],
+          explain: `${w} Ganze sind ${w * d}/${d}. Dazu kommen ${n}/${d}: ${w * d} + ${n} = ${w * d + n}. Also ${w * d + n}/${d}.` }; },
+      r => { const w = R(r, 1, 5), [n, d] = coprime(r, 2, 9), N = w * d + n;
+        return { type: 'mix', q: `Schreibe ${N}/${d} als gemischte Zahl.`, sol: [w, n, d],
+          explain: `${N} : ${d} = ${w} Rest ${n}. Das sind ${w} Ganze und ${n}/${d}, also ${w} ${n}/${d}.` }; },
+      r => { const w = R(r, 1, 6), [n, d] = coprime(r, 2, 9), N = w * d + n;
+        return { type: 'num', q: `Wie viele Ganze stecken in ${N}/${d}?`, sol: w,
+          explain: `Ein Ganzes sind ${d}/${d}. ${N} : ${d} = ${w} Rest ${n}. Also stecken ${w} Ganze darin.` }; },
+      r => { const w = R(r, 1, 4), [n, d] = coprime(r, 3, 9), N = w * d + n, right = `${w} ${n}/${d}`;
+        const wrong = [...new Set([`${w + 1} ${n}/${d}`, `${n} ${w}/${d}`, `${w} ${n}/${N}`, `${w - 1 || w + 2} ${n}/${d}`])].filter(x => x !== right);
+        return mc(r, `Welche gemischte Zahl ist gleich ${N}/${d}?`, right, shuffle(r, wrong).slice(0, 3),
+          `${N} : ${d} = ${w} Rest ${n}. Also ${right}.`); },
+    ],
+    zahlenstrahl: [
+      r => { const max = pick(r, [1, 1, 2]), d = max === 1 ? R(r, 3, 10) : R(r, 2, 6); let m = R(r, 1, d * max - 1); if (m % d === 0) m++;
+        return { type: 'frac', check: 'value', q: 'Welcher Bruch gehört zum roten Pfeil?', pic: { shape: 'line', d, max, mark: m }, sol: [m, d],
+          explain: `Von 0 bis 1 sind es ${d} gleich große Abschnitte, jeder ist 1/${d}. Der Pfeil steht beim ${m}. Strich nach der 0, also ${m}/${d}.` }; },
+      r => { const max = pick(r, [1, 2]), d = max === 1 ? pick(r, [4, 6, 8, 10, 12]) : pick(r, [2, 3, 4, 6]); let m = R(r, 1, d * max - 1); if (m % d === 0) m++;
+        const g = gcd(m, d), useMix = m > d && r() < 0.5, show = useMix ? `${Math.floor(m / d)} ${(m % d) / gcd(m % d, d)}/${d / gcd(m % d, d)}` : `${m / g}/${d / g}`;
+        return { type: 'tick', q: `Tippe auf dem Zahlenstrahl die Stelle ${show} an.`, line: { d, max }, sol: m,
+          explain: `Jeder Abschnitt ist 1/${d}. ${show} = ${m}/${d}, also ${m} Abschnitte nach der 0.` }; },
+      r => { const w = R(r, 0, 3), [n, d] = coprime(r, 2, 9), N = w * d + n, opts = ['0 und 1', '1 und 2', '2 und 3', '3 und 4'], right = opts[w];
+        return mcF(`Zwischen welchen ganzen Zahlen liegt ${N}/${d} auf dem Zahlenstrahl?`, opts, right,
+          `${N}/${d} = ${w ? `${w} ${n}/${d}` : `${n}/${d}`}. Das liegt zwischen ${w} und ${w + 1}.`); },
+    ],
+    primquadrat: [
+      r => { const N = r() < 0.5 ? pick(r, PRIMES) : pick(r, TRICKY), p = isPrime(N);
+        return mc(r, `Ist ${N} eine Primzahl?`, p ? 'Ja' : 'Nein', [],
+          p ? `${N} hat nur die Teiler 1 und ${N}. Also ist ${N} eine Primzahl.` : N === 1 ? '1 ist keine Primzahl: Eine Primzahl hat genau zwei Teiler, 1 hat nur einen.' : `${N} = ${spf(N)} · ${N / spf(N)}. ${N} hat also mehr als zwei Teiler und ist keine Primzahl.`, true); },
+      r => { const P = pick(r, PRIMES.filter(x => x > 10)), W = shuffle(r, TRICKY.filter(x => x > 10)).slice(0, 3);
+        return mc(r, 'Welche dieser Zahlen ist eine Primzahl?', String(P), W.map(String),
+          `${P} hat nur die Teiler 1 und ${P}. ${W.map(x => `${x} = ${spf(x)} · ${x / spf(x)}`).join(', ')}.`); },
+      r => { const k = R(r, 2, 20);
+        return { type: 'num', q: `Berechne die Quadratzahl ${k}².`, sol: k * k, explain: `${k}² = ${k} · ${k} = ${k * k}.` }; },
+      r => { const k = R(r, 4, 15), S = k * k, W = shuffle(r, [S - 1, S + 1, S + k, S - k + 1, 2 * S, S + 2 * k]).filter(x => !isSquare(x)).slice(0, 3);
+        return mc(r, 'Welche Zahl ist eine Quadratzahl?', String(S), W.map(String), `${S} = ${k} · ${k}, also eine Quadratzahl.`); },
+      r => { const N = pick(r, [12, 18, 20, 24, 28, 30, 36, 40, 42, 45, 48, 50, 54, 56, 60, 63, 72, 84, 90, 100]), f = factors(N), right = f.join(' · ');
+        const w1 = [f[0] * f[1], ...f.slice(2)].join(' · '), w2 = [...f, 2].join(' · '), w3 = f.length > 2 ? f.slice(1).join(' · ') : `${N / 2} · 2`;
+        const wrong = [...new Set([w1, w2, w3])].filter(x => x !== right);
+        return mc(r, `Welche Primfaktorzerlegung von ${N} ist richtig?`, right, wrong,
+          `${N} = ${right}. Alle Faktoren sind Primzahlen, und ihr Produkt ist ${N}.`); },
+      r => { const a = pick(r, [10, 20, 30, 40, 50, 60, 70, 80]), b = a + pick(r, [10, 20]), L = PRIMES.filter(x => x > a && x < b);
+        return { type: 'num', q: `Wie viele Primzahlen liegen zwischen ${a} und ${b}?`, sol: L.length,
+          explain: `Zwischen ${a} und ${b} liegen: ${L.join(', ')}. Das sind ${L.length}.` }; },
+    ],
   };
 
   // cfg: { s: seed, t: [themen], n: anzahl, v: versuche, g: note zeigen, ti: titel }
@@ -192,7 +344,16 @@ const Core = (() => {
   function check(t, ans) {
     if (t.type === 'num') { const v = int(ans); return v === null ? { empty: true } : { ok: v === t.sol }; }
     if (t.type === 'mc') return ans == null ? { empty: true } : { ok: ans === t.sol };
-    if (t.type === 'paint') return !ans ? { empty: true } : { ok: ans === t.sol[0], hint: ans !== t.sol[0] ? `Du hast ${ans} von ${t.parts} Teilen gefärbt.` : '' };
+    if (t.type === 'paint') { if (!ans) return { empty: true }; const ok = ans * t.sol[1] === t.sol[0] * t.parts; return { ok, hint: ok ? '' : `Du hast ${ans} von ${t.parts} Teilen gefärbt.` }; }
+    if (t.type === 'tick') return ans == null ? { empty: true } : { ok: ans === t.sol, hint: ans !== t.sol ? 'Zähl die Abschnitte von der 0 aus.' : '' };
+    if (t.type === 'mix') {
+      const w = int(ans && ans.w), n = int(ans && ans.n), d = int(ans && ans.d);
+      if (w === null || n === null || d === null) return { empty: true };
+      if (d === 0) return { ok: false, hint: 'Der Nenner darf nie 0 sein.' };
+      const [sw, sn, sd] = t.sol, same = (w * d + n) * sd === (sw * sd + sn) * d;
+      if (n >= d) return { ok: false, hint: same ? 'Der Wert stimmt, aber im Bruchteil steckt noch ein Ganzes.' : 'Der Bruchteil einer gemischten Zahl ist kleiner als 1.' };
+      return { ok: same };
+    }
     const n = int(ans && ans.n), d = int(ans && ans.d);
     if (n === null || d === null) return { empty: true };
     if (d === 0) return { ok: false, hint: 'Der Nenner darf nie 0 sein.' };
@@ -213,9 +374,13 @@ const Core = (() => {
     if (t.type === 'frac') return `${a.n ?? ''}/${a.d ?? ''}`;
     if (t.type === 'mc') return t.opts[a] ?? '—';
     if (t.type === 'paint') return `${a} von ${t.parts} Teilen`;
+    if (t.type === 'tick') return `${a}/${t.line.d}`;
+    if (t.type === 'mix') return `${a.w ?? ''} ${a.n ?? ''}/${a.d ?? ''}`;
     return String(a);
   };
-  const solText = t => t.type === 'frac' ? `${t.sol[0]}/${t.sol[1]}` : t.type === 'mc' ? t.solText : t.type === 'paint' ? `${t.sol[0]} von ${t.parts} Teilen` : String(t.sol);
+  const solText = t => t.type === 'frac' ? `${t.sol[0]}/${t.sol[1]}` : t.type === 'mc' ? t.solText
+    : t.type === 'paint' ? `${t.sol[0] * t.parts / t.sol[1]} von ${t.parts} Teilen`
+    : t.type === 'tick' ? `${t.sol}/${t.line.d}` : t.type === 'mix' ? `${t.sol[0]} ${t.sol[1]}/${t.sol[2]}` : String(t.sol);
 
   // ---- Codes ----
   const b64e = str => { let s = ''; new TextEncoder().encode(str).forEach(b => s += String.fromCharCode(b)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
@@ -239,13 +404,32 @@ const Core = (() => {
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fr = s => esc(s).replace(/(\d+|\?)\/(\d+|\?)/g, '<span class="fr" aria-label="$1 von $2"><span>$1</span><span>$2</span></span>');
   function pic(p, painted, clickable) {
-    const { shape, d } = p, filled = i => painted ? painted[i] : i < p.n;
+    const { shape } = p, d = shape === 'grid' ? p.rows * p.cols : p.d, filled = i => painted ? painted[i] : i < p.n;
+    const ca = i => clickable ? `data-seg="${i}" tabindex="0" role="button" aria-pressed="${!!filled(i)}" aria-label="Teil ${i + 1}"` : '';
+    if (shape === 'line') {
+      const T = d * p.max, x0 = 20, x1 = 296, st = (x1 - x0) / T, y = 46, mk = clickable ? painted : p.mark; let s = '';
+      s += `<line x1="${x0 - 10}" y1="${y}" x2="${x1 + 14}" y2="${y}" style="stroke:var(--ink);stroke-width:2.5"/><path d="M${x1 + 18},${y} l-9,-5 v10 z" style="fill:var(--ink)"/>`;
+      for (let i = 0; i <= T; i++) {
+        const x = x0 + i * st, big = i % d === 0, h = big ? 12 : 7;
+        s += `<line x1="${x.toFixed(1)}" y1="${y - h}" x2="${x.toFixed(1)}" y2="${y + h}" style="stroke:var(--ink);stroke-width:${big ? 2.5 : 1.8}"/>`;
+        if (big) s += `<text x="${x.toFixed(1)}" y="${y + 32}" text-anchor="middle" style="fill:var(--ink);font:700 17px sans-serif">${i / d}</text>`;
+        if (clickable) s += `<rect data-tick="${i}" tabindex="0" role="button" aria-label="Strich ${i}" x="${(x - st / 2).toFixed(1)}" y="0" width="${st.toFixed(1)}" height="84" style="fill:transparent;cursor:pointer"/>`;
+      }
+      if (mk != null) { const x = x0 + mk * st; s += `<path d="M${(x - 8).toFixed(1)},${y - 34} h16 l-8,15 z" style="fill:var(--pen);pointer-events:none"/>`; }
+      return `<svg class="pic line" viewBox="0 0 320 84" role="img" aria-label="Zahlenstrahl von 0 bis ${p.max}, jedes Ganze in ${d} Teilen">${s}</svg>`;
+    }
+    if (shape === 'grid') {
+      const c = 40; let s = '';
+      for (let i = 0; i < d; i++) { const row = Math.floor(i / p.cols), col = i % p.cols;
+        s += `<rect class="seg${filled(i) ? ' on' : ''}" ${ca(i)} x="${2 + col * c}" y="${2 + row * c}" width="${c}" height="${c}"/>`; }
+      return `<svg class="pic grid" viewBox="0 0 ${p.cols * c + 4} ${p.rows * c + 4}" role="img" aria-label="Rechteck mit ${d} Kästchen">${s}</svg>`;
+    }
     if (shape === 'pie') {
       const cx = 60, cy = 60, rad = 54; let s = '';
       for (let i = 0; i < d; i++) {
         const a0 = -Math.PI / 2 + i * 2 * Math.PI / d, a1 = a0 + 2 * Math.PI / d;
         const x0 = cx + rad * Math.cos(a0), y0 = cy + rad * Math.sin(a0), x1 = cx + rad * Math.cos(a1), y1 = cy + rad * Math.sin(a1);
-        s += `<path class="seg${filled(i) ? ' on' : ''}" d="M${cx},${cy} L${x0.toFixed(2)},${y0.toFixed(2)} A${rad},${rad} 0 ${d === 1 ? 1 : 0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z"/>`;
+        s += `<path class="seg${filled(i) ? ' on' : ''}" ${ca(i)} d="M${cx},${cy} L${x0.toFixed(2)},${y0.toFixed(2)} A${rad},${rad} 0 ${d === 1 ? 1 : 0} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z"/>`;
       }
       return `<svg class="pic" viewBox="0 0 120 120" role="img" aria-label="Kreis in ${d} Teilen">${s}</svg>`;
     }
@@ -254,7 +438,7 @@ const Core = (() => {
     return `<svg class="pic bar" viewBox="0 0 ${W} ${H}" role="img" aria-label="Streifen in ${d} Teilen">${s}</svg>`;
   }
 
-  return { TOPICS, makeSheet, check, ansText, solText, encode, decode, points, grade, SCALE, esc, fr, pic, fnv };
+  return { TOPICS, KA, makeSheet, check, ansText, solText, encode, decode, points, grade, SCALE, esc, fr, pic, fnv };
 })();
 
 </script>
@@ -268,7 +452,7 @@ let S = null;        // laufendes Blatt
 let ui = {};         // Zustand der aktuellen Aufgabe
 let screen = 'start';
 let startErr = '';
-let freeTopics = Object.keys(Core.TOPICS);
+let freeTopics = Core.KA.slice();
 
 function save() { try { localStorage.setItem(LS, JSON.stringify(S)); } catch {} }
 function load() { try { const v = JSON.parse(localStorage.getItem(LS)); if (v && v.cfg) return v; } catch {} return null; }
@@ -294,7 +478,7 @@ function renderStart() {
   const open = saved && saved.res.length < saved.cfg.n;
   app.innerHTML = `
     <div class="stack" style="padding-top:8px">
-      <div><h1>Bruch-Training</h1><p class="muted" style="margin:4px 0 0">Kürzen, Erweitern und was ein Bruch eigentlich ist.</p></div>
+      <div><h1>Bruch-Training</h1><p class="muted" style="margin:4px 0 0">Alles für die Klassenarbeit über Brüche.</p></div>
       ${open ? `<div class="card"><h2>Weitermachen?</h2><p class="muted" style="margin:0">${esc(saved.cfg.ti)} · Aufgabe ${saved.res.length + 1} von ${saved.cfg.n}</p><button class="btn main" id="resume">Weitermachen</button></div>` : ''}
       ${saved && !open ? `<div class="card"><h2>${esc(saved.cfg.ti)}</h2><p class="muted" style="margin:0">Fertig. Hast du Papa das Ergebnis geschickt?</p><button class="btn" id="showdone">Ergebnis ansehen</button></div>` : ''}
       <div class="card">
@@ -303,6 +487,11 @@ function renderStart() {
         <textarea id="code" rows="3" placeholder="BLATT.…" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
         ${startErr ? `<div class="err">${esc(startErr)}</div>` : ''}
         <button class="btn main" id="go">Los geht's</button>
+      </div>
+      <div class="card">
+        <h2>Probe-Klassenarbeit</h2>
+        <p class="muted" style="margin:0">16 Aufgaben aus allen Themen der Arbeit. Ein Versuch pro Aufgabe, am Ende gibt es eine Note.</p>
+        <button class="btn red" id="probe">Probe starten</button>
       </div>
       <div class="card">
         <h2>Einfach so üben</h2>
@@ -317,6 +506,7 @@ function renderStart() {
   };
   $('#resume') && ($('#resume').onclick = () => resume(saved));
   $('#showdone') && ($('#showdone').onclick = () => resume(saved));
+  $('#probe').onclick = () => begin({ s: (Math.random() * 2 ** 31) | 0, t: Core.KA, n: 16, v: 1, g: 1, ti: 'Probe-Klassenarbeit' });
   $('#free').onclick = () => { if (!freeTopics.length) return; begin({ s: (Math.random() * 2 ** 31) | 0, t: freeTopics, n: 10, v: 2, g: 0, ti: 'Freies Üben' }); };
   app.querySelectorAll('[data-topic]').forEach(b => b.onclick = () => {
     const k = b.dataset.topic; freeTopics = freeTopics.includes(k) ? freeTopics.filter(x => x !== k) : [...freeTopics, k];
@@ -333,7 +523,12 @@ function answerHtml(t, locked) {
   }
   if (t.type === 'num') return `<input class="nin" id="anum" inputmode="numeric" pattern="[0-9]*" aria-label="Antwort" value="${esc(ui.ans ?? '')}" ${dis}>`;
   if (t.type === 'mc') return `<div class="opts">${t.opts.map((o, i) => `<button class="opt" data-opt="${i}" aria-pressed="${ui.ans === i}" ${dis}>${fr(o)}</button>`).join('')}</div>`;
-  if (t.type === 'paint') return `<div class="paint" style="width:100%">${Core.pic({ shape: 'bar', d: t.parts }, ui.paint, !locked)}</div>`;
+  if (t.type === 'paint') return `<div class="paint" style="width:100%">${Core.pic({ shape: t.shape || 'bar', d: t.parts, rows: t.rows, cols: t.cols }, ui.paint, !locked)}</div>`;
+  if (t.type === 'tick') return `<div style="width:100%">${Core.pic({ shape: 'line', d: t.line.d, max: t.line.max }, ui.ans, !locked)}</div>`;
+  if (t.type === 'mix') {
+    const a = ui.ans || {};
+    return `<div class="mix"><input class="win" id="aw" inputmode="numeric" pattern="[0-9]*" aria-label="Ganze" value="${esc(a.w || '')}" ${dis}><div class="fin"><input id="an" inputmode="numeric" pattern="[0-9]*" aria-label="Zähler" value="${esc(a.n || '')}" ${dis}><hr><input id="ad" inputmode="numeric" pattern="[0-9]*" aria-label="Nenner" value="${esc(a.d || '')}" ${dis}></div></div>`;
+  }
   return '';
 }
 
@@ -360,11 +555,12 @@ function renderTask() {
   $('#quit').onclick = () => { screen = 'start'; render(); };
   const read = () => {
     if (t.type === 'frac') ui.ans = { n: $('#an').value.trim(), d: $('#ad').value.trim() };
+    if (t.type === 'mix') ui.ans = { w: $('#aw').value.trim(), n: $('#an').value.trim(), d: $('#ad').value.trim() };
     if (t.type === 'num') ui.ans = $('#anum').value.trim();
   };
   app.querySelectorAll('input').forEach(inp => {
     inp.addEventListener('input', read);
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (inp.id === 'an') $('#ad').focus(); else doCheck(); } });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (inp.id === 'aw') $('#an').focus(); else if (inp.id === 'an') $('#ad').focus(); else doCheck(); } });
   });
   app.querySelectorAll('[data-opt]').forEach(b => b.onclick = () => { ui.ans = +b.dataset.opt; app.querySelectorAll('[data-opt]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
   app.querySelectorAll('[data-seg]').forEach(seg => {
@@ -372,15 +568,20 @@ function renderTask() {
     seg.addEventListener('click', toggle);
     seg.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); } });
   });
+  if (!locked) app.querySelectorAll('[data-tick]').forEach(el => {
+    const pickTick = () => { ui.ans = +el.dataset.tick; renderTask(); };
+    el.addEventListener('click', pickTick);
+    el.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pickTick(); } });
+  });
   $('#check') && ($('#check').onclick = doCheck);
   $('#next') && ($('#next').onclick = next);
-  if (!locked && ui.state === 'idle') { const f = $('#an') || $('#anum'); f && setTimeout(() => f.focus(), 50); }
+  if (!locked && ui.state === 'idle') { const f = $('#aw') || $('#an') || $('#anum'); f && setTimeout(() => f.focus(), 50); }
 }
 
 function doCheck() {
   const t = S.tasks[S.i], max = S.cfg.v || 2;
   const c = Core.check(t, ui.ans);
-  if (c.empty) { const f = $('#an') && !$('#an').value ? $('#an') : $('#ad') || $('#anum'); f && f.focus(); return; }
+  if (c.empty) { const f = [$('#aw'), $('#an'), $('#ad'), $('#anum')].find(x => x && !x.value) || $('#anum'); f && f.focus(); return; }
   ui.tries++;
   if (c.ok) { ui.state = 'right'; S.res[S.i] = [Core.ansText(t, ui.ans), ui.tries]; }
   else if (ui.tries >= max) { ui.state = 'shown'; S.res[S.i] = [Core.ansText(t, ui.ans), 0]; }
